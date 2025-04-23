@@ -1,5 +1,3 @@
-# video_publisher.py
-
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
@@ -7,12 +5,11 @@ from cv_bridge import CvBridge
 import cv2
 
 class VideoPublisher(Node):
-    vf = "/mgtu_ws/test.mp4"
-    wf = "/mgtu_ws/test.mp4"
+    vf = "/mgtu_ws/test.mp4"  # Путь к видеофайлу
 
     def __init__(self):
         super().__init__("video_publisher")
-        self.publisher_ = self.create_publisher(Image, "/camera/rgb/image_raw", 10)
+        self.publisher_ = self.create_publisher(Image, "image_raw", 10)
         self.cap = cv2.VideoCapture(self.vf)
         self.bridge = CvBridge()
         self.timer = self.create_timer(0.1, self.timer_callback)  # 10 Hz
@@ -20,13 +17,23 @@ class VideoPublisher(Node):
     def timer_callback(self):
         ret, frame = self.cap.read()
         if ret:
+            # Получаем размеры изображения
+            height, width, channels = frame.shape
+            self.get_logger().info(f"Frame size: {width}x{height}, channels: {channels}")
+
             # Публикация кадра в сообщении ROS 2
             msg = self.bridge.cv2_to_imgmsg(frame, encoding="bgr8")
+
+            # Убедимся, что размеры сообщения корректные
+            msg.height = height
+            msg.width = width
+
+            # Публикуем сообщение
             self.publisher_.publish(msg)
             self.get_logger().info("Publishing video frame")
         else:
             self.get_logger().info("End of video")
-            self.cap = cv2.VideoCapture(self.vf)
+            self.cap = cv2.VideoCapture(self.vf)  # Перезапускаем видео
 
 def main(args=None):
     rclpy.init(args=args)
